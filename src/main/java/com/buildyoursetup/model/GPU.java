@@ -1,5 +1,7 @@
 package com.buildyoursetup.model;
 
+import com.buildyoursetup.patterns.visitor.ComponentVisitor;
+
 public class GPU extends Component {
 
     private final int vram;
@@ -16,5 +18,10 @@ public class GPU extends Component {
 
     public int getVram() {
         return vram;
+    }
+
+    @Override
+    public void accept(ComponentVisitor visitor) {
+        visitor.visit(this);
     }
 }

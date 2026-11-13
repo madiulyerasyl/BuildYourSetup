@@ -1,5 +1,7 @@
 package com.buildyoursetup.model;
 
+import com.buildyoursetup.patterns.visitor.ComponentVisitor;
+
 public class CPU extends Component {
 
     private final String socket;
@@ -24,5 +26,10 @@ public class CPU extends Component {
 
     public int getCores() {
         return cores;
+    }
+
+    @Override
+    public void accept(ComponentVisitor visitor) {
+        visitor.visit(this);
     }
 }

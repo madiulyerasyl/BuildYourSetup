@@ -1,5 +1,7 @@
 package com.buildyoursetup.model;
 
+import com.buildyoursetup.patterns.visitor.ComponentVisitor;
+
 public abstract class Component {
 
     private final String name;
@@ -40,4 +42,6 @@ public abstract class Component {
     public String toString() {
         return brand + " " + name + " - " + price + " KZT";
     }
+
+    public abstract void accept(ComponentVisitor visitor);
 }

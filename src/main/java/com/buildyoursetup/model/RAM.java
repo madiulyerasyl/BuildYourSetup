@@ -1,5 +1,7 @@
 package com.buildyoursetup.model;
 
+import com.buildyoursetup.patterns.visitor.ComponentVisitor;
+
 public class RAM extends Component {
 
     private final int capacity;
@@ -28,5 +30,10 @@ public class RAM extends Component {
 
     public String getMemoryType() {
         return memoryType;
+    }
+
+    @Override
+    public void accept(ComponentVisitor visitor) {
+        visitor.visit(this);
     }
 }
