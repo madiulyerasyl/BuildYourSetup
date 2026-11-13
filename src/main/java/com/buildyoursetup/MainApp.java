@@ -5,6 +5,11 @@ import com.buildyoursetup.model.*;
 import com.buildyoursetup.patterns.adapter.*;
 import com.buildyoursetup.patterns.facade.*;
 import com.buildyoursetup.patterns.observer.PCBuildManager;
+import com.buildyoursetup.patterns.strategy.*;
+import com.buildyoursetup.service.PCRecommendationService;
+import com.buildyoursetup.patterns.decorator.*;
+
+import java.util.ArrayList;
 
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -30,7 +35,20 @@ public class MainApp extends Application {
     private final TextField buildNameField =
             new TextField("My Gaming PC");
 
+    private final CheckBox rgbCheckBox =
+            new CheckBox("RGB Lighting (+15 000 KZT)");
+
+    private final CheckBox warrantyCheckBox =
+            new CheckBox("Extended Warranty (+25 000 KZT)");
+
     private PCBuildManager buildManager;
+
+    private final List<CPU> availableCPUs = new ArrayList<>();
+    private final List<GPU> availableGPUs = new ArrayList<>();
+    private final List<RAM> availableRAMs = new ArrayList<>();
+
+    private final PCRecommendationService recommendationService =
+            new PCRecommendationService(new BudgetStrategy());
 
     @Override
     public void start(Stage stage) {
@@ -44,10 +62,15 @@ public class MainApp extends Application {
         for (Component component : components) {
 
             if (component instanceof CPU cpu) {
+                availableCPUs.add(cpu);
                 cpuBox.getItems().add(cpu);
+
             } else if (component instanceof GPU gpu) {
+                availableGPUs.add(gpu);
                 gpuBox.getItems().add(gpu);
+
             } else if (component instanceof RAM ram) {
+                availableRAMs.add(ram);
                 ramBox.getItems().add(ram);
             }
         }
@@ -95,6 +118,21 @@ public class MainApp extends Application {
         Button validateButton =
                 new Button("Validate Build");
 
+        Button budgetButton = new Button("Budget Build");
+        Button performanceButton = new Button("Performance Build");
+
+        budgetButton.setMaxWidth(Double.MAX_VALUE);
+        performanceButton.setMaxWidth(Double.MAX_VALUE);
+
+        HBox strategyButtons = new HBox(
+                10,
+                budgetButton,
+                performanceButton
+        );
+
+        HBox.setHgrow(budgetButton, Priority.ALWAYS);
+        HBox.setHgrow(performanceButton, Priority.ALWAYS);
+
         validateButton.setMaxWidth(Double.MAX_VALUE);
 
         validateButton.setStyle(
@@ -115,14 +153,19 @@ public class MainApp extends Application {
         PCBuild build = new PCBuild("My Gaming PC");
         buildManager = new PCBuildManager(build);
 
+        budgetButton.setOnAction(event -> {
+            recommendationService.setStrategy(new BudgetStrategy());
+            applyRecommendation();
+        });
+
+        performanceButton.setOnAction(event -> {
+            recommendationService.setStrategy(new PerformanceStrategy());
+            applyRecommendation();
+        });
+
         // Observer: refresh the displayed price
         buildManager.addObserver(changedBuild ->
-                priceLabel.setText(
-                        String.format(
-                                "%,.0f KZT",
-                                changedBuild.calculateTotalPrice()
-                        )
-                )
+                updateTotalPrice()
         );
 
         // Observer: notify the user about configuration changes
@@ -132,6 +175,10 @@ public class MainApp extends Application {
                                 + "Click Validate Build to check it."
                 )
         );
+
+        rgbCheckBox.setOnAction(event -> updateTotalPrice());
+
+        warrantyCheckBox.setOnAction(event -> updateTotalPrice());
 
         cpuBox.setOnAction(event ->
                 buildManager.changeCPU(cpuBox.getValue())
@@ -188,12 +235,16 @@ public class MainApp extends Application {
                 cpuSection,
                 gpuSection,
                 ramSection,
+                new Label("Automatic Recommendation:"),
+                strategyButtons,
+                new Label("Additional Options:"),
+                rgbCheckBox,
+                warrantyCheckBox,
                 priceRow,
                 validateButton,
                 new Label("Validation Result:"),
                 resultArea
         );
-
         root.setStyle("-fx-background-color: #f8fafc;");
 
         ScrollPane scrollPane = new ScrollPane(root);
@@ -205,6 +256,65 @@ public class MainApp extends Application {
         stage.setScene(scene);
         stage.show();
     }
+
+    private void applyRecommendation() {
+
+        try {
+            String name = buildNameField.getText().trim();
+
+            if (name.isEmpty()) {
+                resultArea.setText("Please enter a build name.");
+                return;
+            }
+
+            PCBuild recommended = recommendationService.recommend(
+                    name,
+                    availableCPUs,
+                    availableGPUs,
+                    availableRAMs
+            );
+
+            cpuBox.setValue(recommended.getCpu());
+            gpuBox.setValue(recommended.getGpu());
+            ramBox.setValue(recommended.getRam());
+
+            resultArea.setText(
+                    "Recommended using: "
+                            + recommendationService.getCurrentStrategyName()
+                            + "\nClick Validate Build to check the configuration."
+            );
+
+        } catch (Exception exception) {
+            resultArea.setText("Error: " + exception.getMessage());
+        }
+    }
+
+    private void updateTotalPrice() {
+
+        if (buildManager == null) {
+            return;
+        }
+
+        PCBuild build = buildManager.getBuild();
+
+        BuildOption decoratedBuild = new BasicBuild(build);
+
+        if (rgbCheckBox.isSelected()) {
+            decoratedBuild = new RGBDecorator(decoratedBuild);
+        }
+
+        if (warrantyCheckBox.isSelected()) {
+            decoratedBuild = new WarrantyDecorator(decoratedBuild);
+        }
+
+        priceLabel.setText(
+                String.format(
+                        "%,.0f KZT",
+                        decoratedBuild.getTotalPrice()
+                )
+        );
+    }
+
 
     private VBox createSection(
             String title,

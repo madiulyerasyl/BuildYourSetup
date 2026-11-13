@@ -31,28 +31,38 @@ public class ExternalCatalogAdapter implements ComponentCatalog {
         return components;
     }
 
+
     private Component convertProduct(ExternalProduct product) {
 
         String name = product.getProductTitle();
         String brand = product.getManufacturer();
         double price = product.getCost();
 
-        switch (product.getCategory()) {
+        switch (product.getProductId()) {
 
-            case "PROCESSOR":
+            case "CPU-001":
                 return new CPU(name, brand, price, "AM5", 6);
 
-            case "GRAPHICS_CARD":
+            case "CPU-002":
+                return new CPU(name, brand, price, "AM5", 8);
+
+            case "GPU-001":
                 return new GPU(name, brand, price, 8);
 
-            case "MEMORY":
+            case "GPU-002":
+                return new GPU(name, brand, price, 12);
+
+            case "RAM-001":
                 return new RAM(name, brand, price, 32, "DDR5");
+
+            case "RAM-002":
+                return new RAM(name, brand, price, 64, "DDR5");
 
             default:
                 throw new IllegalArgumentException(
-                        "Unsupported category: "
-                                + product.getCategory()
+                        "Unknown product: " + product.getProductId()
                 );
         }
     }
+
 }
