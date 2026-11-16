@@ -661,11 +661,7 @@ public class MainApp extends Application {
         VBox gpuSection = createSection("GPU", gpuBox);
         VBox ramSection = createSection("RAM", ramBox);
 
-        priceLabel.setStyle(
-                "-fx-font-size: 22px;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-text-fill: #16a34a;"
-        );
+        priceLabel.getStyleClass().add("price-label");
 
         Label priceTitle = new Label("Total Price:");
         priceTitle.setStyle("-fx-font-weight: bold;");
@@ -799,23 +795,17 @@ public class MainApp extends Application {
 
         reportButton.setOnAction(event -> generateReport());
 
-
-
         Button createBuildButton = new Button("Create Build");
 
         createBuildButton.setMaxWidth(Double.MAX_VALUE);
 
-        createBuildButton.setStyle(
-                "-fx-background-color: #7c3aed;"
-                        + "-fx-text-fill: white;"
-                        + "-fx-font-size: 14px;"
-                        + "-fx-font-weight: bold;"
-                        + "-fx-padding: 12px;"
-        );
+        createBuildButton.getStyleClass().add("primary-button");
 
         createBuildButton.setOnAction(event -> createBuild());
 
         Button saveBuildButton = new Button("Save Build");
+
+
 
         saveBuildButton.setMaxWidth(Double.MAX_VALUE);
 
@@ -891,6 +881,13 @@ public class MainApp extends Application {
                 event -> deleteBuild()
         );
 
+        createBuildButton.getStyleClass().add("primary-button");
+        saveBuildButton.getStyleClass().add("success-button");
+        loadBuildButton.getStyleClass().add("primary-button");
+        updateBuildButton.getStyleClass().add("warning-button");
+        deleteBuildButton.getStyleClass().add("danger-button");
+        priceLabel.getStyleClass().add("price-label");
+
         root.getChildren().addAll(
                 title,
                 subtitle,
@@ -918,15 +915,34 @@ public class MainApp extends Application {
                 resultArea
         );
 
-        root.setStyle("-fx-background-color: #f8fafc;");
+        root.setStyle("-fx-background-color: #111827;");
 
         ScrollPane scrollPane = new ScrollPane(root);
         scrollPane.setFitToWidth(true);
 
         Scene scene = new Scene(scrollPane, 650, 750);
+        scene.getStylesheets().add(
+                java.util.Objects.requireNonNull(
+                        getClass().getResource("/styles/app.css")
+                ).toExternalForm()
+        );
 
-        stage.setTitle("Build Your Setup - PC Configurator");
         stage.setScene(scene);
+
+        Label titleLabel = new Label("BUILD YOUR SETUP");
+        titleLabel.getStyleClass().add("app-title");
+
+        Label componentsTitle = new Label("01 / PC Components");
+        componentsTitle.getStyleClass().add("section-title");
+
+        Label actionsTitle = new Label("02 / Build Actions");
+        actionsTitle.getStyleClass().add("section-title");
+
+        Label savedTitle = new Label("03 / Saved Builds");
+        savedTitle.getStyleClass().add("section-title");
+
+        Label reportTitle = new Label("04 / Validation & Report");
+        reportTitle.getStyleClass().add("section-title");
 
         loadSavedBuilds();
 
