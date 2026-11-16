@@ -13,6 +13,7 @@ import com.buildyoursetup.patterns.builder.PCBuildBuilder;
 import com.buildyoursetup.external.ExternalProduct;
 import com.buildyoursetup.persistence.BuildStorage;
 import com.buildyoursetup.persistence.SavedBuild;
+import java.util.Optional;
 
 import java.nio.file.Path;
 import java.io.IOException;
@@ -313,6 +314,108 @@ public class MainApp extends Application {
             );
         }
     }
+
+    private void deleteBuild() {
+
+        try {
+            // Get the selected saved build
+            SavedBuild selected =
+                    savedBuildsList.getSelectionModel()
+                            .getSelectedItem();
+
+            if (selected == null) {
+                resultArea.setText(
+                        "Please select a saved build to delete."
+                );
+                return;
+            }
+
+            // Confirmation dialog
+            Alert confirmation = new Alert(
+                    Alert.AlertType.CONFIRMATION
+            );
+
+            confirmation.setTitle("Delete Build");
+            confirmation.setHeaderText(
+                    "Delete " + selected.getName() + "?"
+            );
+
+            confirmation.setContentText(
+                    "This action cannot be undone."
+            );
+
+            ButtonType deleteButtonType = new ButtonType(
+                    "Delete",
+                    ButtonBar.ButtonData.OK_DONE
+            );
+
+            ButtonType cancelButtonType = new ButtonType(
+                    "Cancel",
+                    ButtonBar.ButtonData.CANCEL_CLOSE
+            );
+
+            confirmation.getButtonTypes().setAll(
+                    deleteButtonType,
+                    cancelButtonType
+            );
+
+            Optional<ButtonType> response =
+                    confirmation.showAndWait();
+
+            // Stop if the user cancels or closes the dialog
+            if (response.isEmpty()
+                    || response.get() != deleteButtonType) {
+                return;
+            }
+
+            // Create a new list without the selected build
+            List<SavedBuild> updatedList =
+                    new ArrayList<>(savedBuilds);
+
+            boolean removed = updatedList.removeIf(
+                    build -> build == selected
+            );
+
+            if (!removed) {
+                resultArea.setText(
+                        "Error: Saved build was not found."
+                );
+                return;
+            }
+
+            // Save the updated JSON first
+            storage.saveBuilds(updatedList);
+
+            // Update the in-memory list
+            savedBuilds.clear();
+            savedBuilds.addAll(updatedList);
+
+            // Refresh the JavaFX list
+            savedBuildsList.getItems().setAll(savedBuilds);
+
+            // Clear the editing reference if necessary
+            if (java.util.Objects.equals(
+                    selected.getId(), loadedBuildId
+            )) {
+                loadedBuildId = null;
+                createdBuild = null;
+            }
+
+            resultArea.setText(
+                    "=== BUILD DELETED SUCCESSFULLY ===\n"
+                            + "Deleted build: " + selected.getName() + "\n"
+                            + "Remaining builds: " + savedBuilds.size()
+            );
+
+        } catch (Exception exception) {
+
+            resultArea.setText(
+                    "Error deleting build: "
+                            + exception.getMessage()
+            );
+        }
+    }
+
 
     private void saveBuild() {
 
@@ -768,6 +871,22 @@ public class MainApp extends Application {
                 event -> updateBuild()
         );
 
+        Button deleteBuildButton = new Button("Delete Build");
+
+        deleteBuildButton.setMaxWidth(Double.MAX_VALUE);
+
+        deleteBuildButton.setStyle(
+                "-fx-background-color: #dc2626;"
+                        + "-fx-text-fill: white;"
+                        + "-fx-font-size: 14px;"
+                        + "-fx-font-weight: bold;"
+                        + "-fx-padding: 12px;"
+        );
+
+        deleteBuildButton.setOnAction(
+                event -> deleteBuild()
+        );
+
         root.getChildren().addAll(
                 title,
                 subtitle,
@@ -790,6 +909,7 @@ public class MainApp extends Application {
                 savedBuildsList,
                 loadBuildButton,
                 updateBuildButton,
+                deleteBuildButton,
                 new Label("Validation Result / Report:"),
                 resultArea
         );

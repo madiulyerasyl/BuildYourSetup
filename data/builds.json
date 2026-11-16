@@ -22,12 +22,4 @@
   "ramId" : "RAM-002",
   "rgb" : false,
   "warranty" : false
-}, {
-  "id" : null,
-  "name" : null,
-  "cpuId" : "CPU-001",
-  "gpuId" : "GPU-001",
-  "ramId" : "RAM-001",
-  "rgb" : false,
-  "warranty" : false
 } ]
