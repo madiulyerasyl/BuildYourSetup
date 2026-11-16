@@ -9,6 +9,7 @@ import com.buildyoursetup.patterns.strategy.*;
 import com.buildyoursetup.service.PCRecommendationService;
 import com.buildyoursetup.patterns.decorator.*;
 import com.buildyoursetup.patterns.visitor.ReportVisitor;
+import com.buildyoursetup.patterns.builder.PCBuildBuilder;
 
 import java.util.ArrayList;
 
@@ -43,6 +44,7 @@ public class MainApp extends Application {
             new CheckBox("Extended Warranty (+25 000 KZT)");
 
     private PCBuildManager buildManager;
+    private PCBuild createdBuild;
 
     private final List<CPU> availableCPUs = new ArrayList<>();
     private final List<GPU> availableGPUs = new ArrayList<>();
@@ -243,6 +245,20 @@ public class MainApp extends Application {
 
         reportButton.setOnAction(event -> generateReport());
 
+        Button createBuildButton = new Button("Create Build");
+
+        createBuildButton.setMaxWidth(Double.MAX_VALUE);
+
+        createBuildButton.setStyle(
+                "-fx-background-color: #7c3aed;"
+                        + "-fx-text-fill: white;"
+                        + "-fx-font-size: 14px;"
+                        + "-fx-font-weight: bold;"
+                        + "-fx-padding: 12px;"
+        );
+
+        createBuildButton.setOnAction(event -> createBuild());
+
         root.getChildren().addAll(
                 title,
                 subtitle,
@@ -257,11 +273,13 @@ public class MainApp extends Application {
                 rgbCheckBox,
                 warrantyCheckBox,
                 priceRow,
+                createBuildButton,
                 validateButton,
                 reportButton,
                 new Label("Validation Result / Report:"),
                 resultArea
         );
+
         root.setStyle("-fx-background-color: #f8fafc;");
 
         ScrollPane scrollPane = new ScrollPane(root);
@@ -426,6 +444,76 @@ public class MainApp extends Application {
         }
     }
 
+
+    private void createBuild() {
+
+        try {
+            String name = buildNameField.getText().trim();
+
+            if (name.isEmpty()) {
+                resultArea.setText(
+                        "Error: Please enter a build name."
+                );
+                return;
+            }
+
+            CPU selectedCPU = cpuBox.getValue();
+            GPU selectedGPU = gpuBox.getValue();
+            RAM selectedRAM = ramBox.getValue();
+
+            if (selectedCPU == null ||
+                    selectedGPU == null ||
+                    selectedRAM == null) {
+
+                resultArea.setText(
+                        "Error: Please select CPU, GPU and RAM."
+                );
+                return;
+            }
+
+            // Builder Pattern
+            PCBuild newBuild = new PCBuildBuilder(name)
+                    .withCPU(selectedCPU)
+                    .withGPU(selectedGPU)
+                    .withRAM(selectedRAM)
+                    .build();
+
+            // Facade Pattern
+            ValidationResult validation =
+                    facade.validateBuild(newBuild);
+
+            if (!validation.isValid()) {
+                resultArea.setText(
+                        "Cannot create build.\n"
+                                + validation
+                );
+                return;
+            }
+
+            createdBuild = newBuild;
+
+            resultArea.setText(
+                    "=== BUILD CREATED SUCCESSFULLY ===\n"
+                            + "Name: " + createdBuild.getName() + "\n"
+                            + "CPU: " + createdBuild.getCpu().getName() + "\n"
+                            + "GPU: " + createdBuild.getGpu().getName() + "\n"
+                            + "RAM: " + createdBuild.getRam().getName() + "\n"
+                            + "Base Price: "
+                            + String.format(
+                            "%,.0f",
+                            createdBuild.calculateTotalPrice()
+                    )
+                            + " KZT\n\n"
+                            + "Status: VALID"
+            );
+
+        } catch (Exception exception) {
+
+            resultArea.setText(
+                    "Error: " + exception.getMessage()
+            );
+        }
+    }
 
 
     private VBox createSection(
