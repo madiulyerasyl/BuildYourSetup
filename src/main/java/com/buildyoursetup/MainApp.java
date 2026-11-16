@@ -8,6 +8,7 @@ import com.buildyoursetup.patterns.observer.PCBuildManager;
 import com.buildyoursetup.patterns.strategy.*;
 import com.buildyoursetup.service.PCRecommendationService;
 import com.buildyoursetup.patterns.decorator.*;
+import com.buildyoursetup.patterns.visitor.ReportVisitor;
 
 import java.util.ArrayList;
 
@@ -144,7 +145,8 @@ public class MainApp extends Application {
         );
 
         resultArea.setEditable(false);
-        resultArea.setPrefRowCount(6);
+        resultArea.setPrefRowCount(15);
+        resultArea.setWrapText(true);
         resultArea.setPromptText(
                 "Validation results will appear here..."
         );
@@ -227,6 +229,20 @@ public class MainApp extends Application {
 
         root.setPadding(new Insets(25));
 
+        Button reportButton = new Button("Generate Report");
+
+        reportButton.setMaxWidth(Double.MAX_VALUE);
+
+        reportButton.setStyle(
+                "-fx-background-color: #16a34a;"
+                        + "-fx-text-fill: white;"
+                        + "-fx-font-size: 14px;"
+                        + "-fx-font-weight: bold;"
+                        + "-fx-padding: 12px;"
+        );
+
+        reportButton.setOnAction(event -> generateReport());
+
         root.getChildren().addAll(
                 title,
                 subtitle,
@@ -242,7 +258,8 @@ public class MainApp extends Application {
                 warrantyCheckBox,
                 priceRow,
                 validateButton,
-                new Label("Validation Result:"),
+                reportButton,
+                new Label("Validation Result / Report:"),
                 resultArea
         );
         root.setStyle("-fx-background-color: #f8fafc;");
@@ -314,6 +331,101 @@ public class MainApp extends Application {
                 )
         );
     }
+
+
+    private void generateReport() {
+
+        try {
+            String name = buildNameField.getText().trim();
+
+            if (name.isEmpty()) {
+                resultArea.setText("Please enter a build name.");
+                return;
+            }
+
+            PCBuild build = buildManager.getBuild();
+
+            if (!build.isComplete()) {
+                resultArea.setText(
+                        "Cannot generate report.\n"
+                                + "Please select CPU, GPU and RAM."
+                );
+                return;
+            }
+
+            build.setName(name);
+
+            ValidationResult validation =
+                    facade.validateBuild(build);
+
+            if (!validation.isValid()) {
+                resultArea.setText(
+                        "Cannot generate report.\n"
+                                + "Please fix the configuration first.\n\n"
+                                + validation
+                );
+                return;
+            }
+
+            // Visitor Pattern
+            ReportVisitor visitor = new ReportVisitor();
+
+            build.getCpu().accept(visitor);
+            build.getGpu().accept(visitor);
+            build.getRam().accept(visitor);
+
+            // Decorator Pattern
+            BuildOption finalBuild = new BasicBuild(build);
+
+            StringBuilder selectedOptions = new StringBuilder();
+
+            if (rgbCheckBox.isSelected()) {
+                finalBuild = new RGBDecorator(finalBuild);
+                selectedOptions.append(
+                        "RGB Lighting: +15000 KZT\n"
+                );
+            }
+
+            if (warrantyCheckBox.isSelected()) {
+                finalBuild = new WarrantyDecorator(finalBuild);
+                selectedOptions.append(
+                        "Extended Warranty: +25000 KZT\n"
+                );
+            }
+
+            if (selectedOptions.length() == 0) {
+                selectedOptions.append("None\n");
+            }
+
+            String report =
+                    "=== PC BUILD REPORT ===\n"
+                            + "Build: " + build.getName() + "\n\n"
+                            + visitor.getReport()
+                            + "=== ADDITIONAL OPTIONS ===\n"
+                            + selectedOptions
+                            + "\nBase Price: "
+                            + String.format(
+                            "%,.0f",
+                            build.calculateTotalPrice()
+                    )
+                            + " KZT\n"
+                            + "Final Price: "
+                            + String.format(
+                            "%,.0f",
+                            finalBuild.getTotalPrice()
+                    )
+                            + " KZT\n"
+                            + "Validation: PASSED";
+
+            resultArea.setText(report);
+
+        } catch (Exception exception) {
+            resultArea.setText(
+                    "Error: " + exception.getMessage()
+            );
+        }
+    }
+
 
 
     private VBox createSection(
