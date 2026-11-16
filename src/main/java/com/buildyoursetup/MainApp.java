@@ -1,6 +1,6 @@
 package com.buildyoursetup;
 
-import com.buildyoursetup.external.ExternalCatalog;
+import  com.buildyoursetup.external.ExternalCatalog;
 import com.buildyoursetup.model.*;
 import com.buildyoursetup.patterns.adapter.*;
 import com.buildyoursetup.patterns.facade.*;
@@ -14,12 +14,11 @@ import com.buildyoursetup.external.ExternalProduct;
 import com.buildyoursetup.persistence.BuildStorage;
 import com.buildyoursetup.persistence.SavedBuild;
 import java.util.Optional;
-
+import com.buildyoursetup.service.validation.BuildInputValidator;
 import java.nio.file.Path;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.UUID;
-
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -180,9 +179,11 @@ public class MainApp extends Application {
 
         try {
             // Check whether a saved build was loaded
-            if (loadedBuildId == null) {
+            if (loadedBuildId == null
+                    || loadedBuildId.isBlank()) {
+
                 resultArea.setText(
-                        "Please load a saved build before updating."
+                        "Please load a valid saved build before updating."
                 );
                 return;
             }
@@ -215,6 +216,8 @@ public class MainApp extends Application {
             CPU cpu = cpuBox.getValue();
             GPU gpu = gpuBox.getValue();
             RAM ram = ramBox.getValue();
+
+            BuildInputValidator.validate(name, cpu, gpu, ram);
 
             if (cpu == null || gpu == null || ram == null) {
                 resultArea.setText(
@@ -433,6 +436,7 @@ public class MainApp extends Application {
             CPU cpu = cpuBox.getValue();
             GPU gpu = gpuBox.getValue();
             RAM ram = ramBox.getValue();
+            BuildInputValidator.validate(name, cpu, gpu, ram);
 
             if (cpu == null || gpu == null || ram == null) {
                 resultArea.setText(
