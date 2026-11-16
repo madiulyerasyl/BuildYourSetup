@@ -2,7 +2,7 @@
   "id" : "449a4403-00e0-4050-8d9c-eef095482fb3",
   "name" : "Gaming Pc 26",
   "cpuId" : "CPU-001",
-  "gpuId" : "GPU-001",
+  "gpuId" : "GPU-002",
   "ramId" : "RAM-001",
   "rgb" : true,
   "warranty" : false
@@ -22,10 +22,12 @@
   "ramId" : "RAM-002",
   "rgb" : false,
   "warranty" : false
-},
-  {
-    "cpuId": "CPU-001",
-    "gpuId": "GPU-001",
-    "ramId": "RAM-001"
-  }
-]
+}, {
+  "id" : null,
+  "name" : null,
+  "cpuId" : "CPU-001",
+  "gpuId" : "GPU-001",
+  "ramId" : "RAM-001",
+  "rgb" : false,
+  "warranty" : false
+} ]

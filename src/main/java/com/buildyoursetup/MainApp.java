@@ -51,6 +51,7 @@ public class MainApp extends Application {
 
     private PCBuildManager buildManager;
     private PCBuild createdBuild;
+    private String loadedBuildId;
 
     private final BuildStorage storage =
             new BuildStorage(Path.of("data", "builds.json"));
@@ -151,6 +152,7 @@ public class MainApp extends Application {
             updateTotalPrice();
 
             createdBuild = loadedBuild;
+            loadedBuildId = selected.getId();
 
             resultArea.setText(
                     "=== BUILD LOADED SUCCESSFULLY ===\n"
@@ -173,6 +175,144 @@ public class MainApp extends Application {
         }
     }
 
+    private void updateBuild() {
+
+        try {
+            // Check whether a saved build was loaded
+            if (loadedBuildId == null) {
+                resultArea.setText(
+                        "Please load a saved build before updating."
+                );
+                return;
+            }
+
+            // Find the original saved record
+            SavedBuild original = savedBuilds.stream()
+                    .filter(build ->
+                            loadedBuildId.equals(build.getId())
+                    )
+                    .findFirst()
+                    .orElse(null);
+
+            if (original == null) {
+                resultArea.setText(
+                        "Error: Saved build was not found."
+                );
+                return;
+            }
+
+            // Read current GUI values
+            String name = buildNameField.getText().trim();
+
+            if (name.isEmpty()) {
+                resultArea.setText(
+                        "Error: Please enter a build name."
+                );
+                return;
+            }
+
+            CPU cpu = cpuBox.getValue();
+            GPU gpu = gpuBox.getValue();
+            RAM ram = ramBox.getValue();
+
+            if (cpu == null || gpu == null || ram == null) {
+                resultArea.setText(
+                        "Error: Please select CPU, GPU and RAM."
+                );
+                return;
+            }
+
+            // Builder Pattern
+            PCBuild updatedBuild = new PCBuildBuilder(name)
+                    .withCPU(cpu)
+                    .withGPU(gpu)
+                    .withRAM(ram)
+                    .build();
+
+            // Facade Pattern
+            ValidationResult validation =
+                    facade.validateBuild(updatedBuild);
+
+            if (!validation.isValid()) {
+                resultArea.setText(
+                        "Cannot update build.\n" + validation
+                );
+                return;
+            }
+
+            // Find component IDs
+            String cpuId = findComponentId(
+                    "PROCESSOR", cpu.getName(), cpu.getBrand()
+            );
+
+            String gpuId = findComponentId(
+                    "GRAPHICS_CARD", gpu.getName(), gpu.getBrand()
+            );
+
+            String ramId = findComponentId(
+                    "MEMORY", ram.getName(), ram.getBrand()
+            );
+
+            // Create an updated record with the SAME ID
+            SavedBuild updatedRecord = new SavedBuild(
+                    original.getId(),
+                    name,
+                    cpuId,
+                    gpuId,
+                    ramId,
+                    rgbCheckBox.isSelected(),
+                    warrantyCheckBox.isSelected()
+            );
+
+            // Prepare a new list without modifying the original
+            List<SavedBuild> updatedList =
+                    new ArrayList<>(savedBuilds);
+
+            int index = updatedList.indexOf(original);
+
+            updatedList.set(index, updatedRecord);
+
+            // Write JSON first
+            storage.saveBuilds(updatedList);
+
+            // Update GUI only after successful save
+            savedBuilds.clear();
+            savedBuilds.addAll(updatedList);
+
+            savedBuildsList.getItems().setAll(savedBuilds);
+
+            savedBuildsList.getSelectionModel()
+                    .select(updatedRecord);
+
+            createdBuild = updatedBuild;
+
+            updateTotalPrice();
+
+            resultArea.setText(
+                    "=== BUILD UPDATED SUCCESSFULLY ===\n"
+                            + "Name: " + name + "\n"
+                            + "CPU: " + cpu.getName() + "\n"
+                            + "GPU: " + gpu.getName() + "\n"
+                            + "RAM: " + ram.getName() + "\n"
+                            + "Final Price: "
+                            + String.format(
+                            "%,.0f",
+                            updatedBuild.calculateTotalPrice()
+                                    + (rgbCheckBox.isSelected() ? 15000 : 0)
+                                    + (warrantyCheckBox.isSelected() ? 25000 : 0)
+                    )
+                            + " KZT\n"
+                            + "Status: UPDATED"
+            );
+
+        } catch (Exception exception) {
+
+            resultArea.setText(
+                    "Error updating build: "
+                            + exception.getMessage()
+            );
+        }
+    }
 
     private void saveBuild() {
 
@@ -254,6 +394,7 @@ public class MainApp extends Application {
             savedBuildsList.getSelectionModel().select(saved);
 
             createdBuild = build;
+            loadedBuildId = null;
 
             resultArea.setText(
                     "=== BUILD SAVED SUCCESSFULLY ===\n"
@@ -611,6 +752,22 @@ public class MainApp extends Application {
                 event -> loadSelectedBuild()
         );
 
+        Button updateBuildButton = new Button("Update Build");
+
+        updateBuildButton.setMaxWidth(Double.MAX_VALUE);
+
+        updateBuildButton.setStyle(
+                "-fx-background-color: #d97706;"
+                        + "-fx-text-fill: white;"
+                        + "-fx-font-size: 14px;"
+                        + "-fx-font-weight: bold;"
+                        + "-fx-padding: 12px;"
+        );
+
+        updateBuildButton.setOnAction(
+                event -> updateBuild()
+        );
+
         root.getChildren().addAll(
                 title,
                 subtitle,
@@ -632,6 +789,7 @@ public class MainApp extends Application {
                 savedBuildsTitle,
                 savedBuildsList,
                 loadBuildButton,
+                updateBuildButton,
                 new Label("Validation Result / Report:"),
                 resultArea
         );
