@@ -10,8 +10,14 @@ import com.buildyoursetup.service.PCRecommendationService;
 import com.buildyoursetup.patterns.decorator.*;
 import com.buildyoursetup.patterns.visitor.ReportVisitor;
 import com.buildyoursetup.patterns.builder.PCBuildBuilder;
+import com.buildyoursetup.external.ExternalProduct;
+import com.buildyoursetup.persistence.BuildStorage;
+import com.buildyoursetup.persistence.SavedBuild;
 
+import java.nio.file.Path;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.UUID;
 
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -45,6 +51,306 @@ public class MainApp extends Application {
 
     private PCBuildManager buildManager;
     private PCBuild createdBuild;
+
+    private final BuildStorage storage =
+            new BuildStorage(Path.of("data", "builds.json"));
+
+    private final Path storagePath =
+            Path.of("data", "builds.json").toAbsolutePath();
+
+
+    private void loadSavedBuilds() {
+        try {
+            System.out.println("JSON path: " + storagePath);
+            System.out.println(
+                    "File exists: " + java.nio.file.Files.exists(storagePath)
+            );
+
+            List<SavedBuild> loaded = storage.loadBuilds();
+
+            System.out.println("Loaded builds: " + loaded.size());
+
+            savedBuilds.clear();
+            savedBuilds.addAll(loaded);
+
+            savedBuildsList.getItems().setAll(savedBuilds);
+
+        } catch (Exception exception) {
+            exception.printStackTrace();
+
+            resultArea.setText(
+                    "Loading error: " + exception.getMessage()
+            );
+        }
+    }
+
+
+    private void loadSelectedBuild() {
+
+        try {
+            SavedBuild selected =
+                    savedBuildsList.getSelectionModel()
+                            .getSelectedItem();
+
+            if (selected == null) {
+                resultArea.setText(
+                        "Please select a saved build first."
+                );
+                return;
+            }
+
+            // Find saved components by their IDs
+            CPU cpu = (CPU) findComponentById(
+                    selected.getCpuId()
+            );
+
+            GPU gpu = (GPU) findComponentById(
+                    selected.getGpuId()
+            );
+
+            RAM ram = (RAM) findComponentById(
+                    selected.getRamId()
+            );
+
+            // Builder Pattern
+            PCBuild loadedBuild =
+                    new PCBuildBuilder(selected.getName())
+                            .withCPU(cpu)
+                            .withGPU(gpu)
+                            .withRAM(ram)
+                            .build();
+
+            // Validate before changing the GUI
+            ValidationResult validation =
+                    facade.validateBuild(loadedBuild);
+
+            if (!validation.isValid()) {
+                resultArea.setText(
+                        "Saved build is not valid:\n"
+                                + validation
+                );
+                return;
+            }
+
+            // Restore the form
+            buildNameField.setText(selected.getName());
+
+            cpuBox.setValue(cpu);
+            gpuBox.setValue(gpu);
+            ramBox.setValue(ram);
+            buildManager.changeCPU(cpu);
+            buildManager.changeGPU(gpu);
+            buildManager.changeRAM(ram);
+
+            rgbCheckBox.setSelected(selected.isRgb());
+            warrantyCheckBox.setSelected(
+                    selected.isWarranty()
+            );
+
+            // Recalculate price including decorators
+            updateTotalPrice();
+
+            createdBuild = loadedBuild;
+
+            resultArea.setText(
+                    "=== BUILD LOADED SUCCESSFULLY ===\n"
+                            + "Name: " + selected.getName() + "\n"
+                            + "CPU: " + cpu.getName() + "\n"
+                            + "GPU: " + gpu.getName() + "\n"
+                            + "RAM: " + ram.getName() + "\n"
+                            + "RGB Lighting: " + selected.isRgb() + "\n"
+                            + "Extended Warranty: "
+                            + selected.isWarranty() + "\n"
+                            + "Status: LOADED"
+            );
+
+        } catch (Exception exception) {
+
+            resultArea.setText(
+                    "Error loading build: "
+                            + exception.getMessage()
+            );
+        }
+    }
+
+
+    private void saveBuild() {
+
+        try {
+            // Use the current GUI selections, not a stale build
+            String name = buildNameField.getText().trim();
+
+            if (name.isEmpty()) {
+                resultArea.setText(
+                        "Error: Please enter a build name."
+                );
+                return;
+            }
+
+            CPU cpu = cpuBox.getValue();
+            GPU gpu = gpuBox.getValue();
+            RAM ram = ramBox.getValue();
+
+            if (cpu == null || gpu == null || ram == null) {
+                resultArea.setText(
+                        "Error: Please select CPU, GPU and RAM."
+                );
+                return;
+            }
+
+            // Builder Pattern
+            PCBuild build = new PCBuildBuilder(name)
+                    .withCPU(cpu)
+                    .withGPU(gpu)
+                    .withRAM(ram)
+                    .build();
+
+            // Facade Pattern
+            ValidationResult validation =
+                    facade.validateBuild(build);
+
+            if (!validation.isValid()) {
+                resultArea.setText(
+                        "Cannot save build.\n" + validation
+                );
+                return;
+            }
+
+            // Find matching products in the external catalog
+            String cpuId = findComponentId(
+                    "PROCESSOR", cpu.getName(), cpu.getBrand()
+            );
+
+            String gpuId = findComponentId(
+                    "GRAPHICS_CARD", gpu.getName(), gpu.getBrand()
+            );
+
+            String ramId = findComponentId(
+                    "MEMORY", ram.getName(), ram.getBrand()
+            );
+
+            SavedBuild saved = new SavedBuild(
+                    UUID.randomUUID().toString(),
+                    name,
+                    cpuId,
+                    gpuId,
+                    ramId,
+                    rgbCheckBox.isSelected(),
+                    warrantyCheckBox.isSelected()
+            );
+
+            // Save a new snapshot; only update the GUI after
+            // the JSON write succeeds
+            List<SavedBuild> updated =
+                    new ArrayList<>(savedBuilds);
+
+            updated.add(saved);
+
+            storage.saveBuilds(updated);
+
+            savedBuilds.clear();
+            savedBuilds.addAll(updated);
+            savedBuildsList.getItems().setAll(savedBuilds);
+            savedBuildsList.getSelectionModel().select(saved);
+
+            createdBuild = build;
+
+            resultArea.setText(
+                    "=== BUILD SAVED SUCCESSFULLY ===\n"
+                            + "Name: " + name + "\n"
+                            + "CPU: " + cpu.getName() + "\n"
+                            + "GPU: " + gpu.getName() + "\n"
+                            + "RAM: " + ram.getName() + "\n"
+                            + "Saved to: data/builds.json"
+            );
+
+        } catch (Exception exception) {
+
+            resultArea.setText(
+                    "Error saving build: "
+                            + exception.getMessage()
+            );
+        }
+    }
+
+    private String findComponentId(
+            String category,
+            String name,
+            String brand
+    ) {
+
+        ExternalCatalog catalog = new ExternalCatalog();
+
+        return catalog.fetchProducts()
+                .stream()
+                .filter(product ->
+                        product.getCategory().equals(category)
+                                && product.getProductTitle().equals(name)
+                                && product.getManufacturer().equals(brand)
+                )
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Component not found in catalog: "
+                                        + brand + " " + name
+                        )
+                )
+                .getProductId();
+    }
+
+    private Component findComponentById(String productId) {
+
+        ExternalCatalog externalCatalog = new ExternalCatalog();
+
+        ExternalProduct product = externalCatalog.fetchProducts()
+                .stream()
+                .filter(item ->
+                        item.getProductId().equals(productId)
+                )
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Product not found: " + productId
+                        )
+                );
+
+        // Use the existing adapter to convert the product
+        ComponentCatalog catalog =
+                new ExternalCatalogAdapter(externalCatalog);
+
+        return catalog.getComponents()
+                .stream()
+                .filter(component ->
+                        component.getName().equals(
+                                product.getProductTitle()
+                        )
+                                && component.getBrand().equals(
+                                product.getManufacturer()
+                        )
+                                && component.getClass().getSimpleName()
+                                .equals(
+                                        switch (product.getCategory()) {
+                                            case "PROCESSOR" -> "CPU";
+                                            case "GRAPHICS_CARD" -> "GPU";
+                                            case "MEMORY" -> "RAM";
+                                            default -> "";
+                                        }
+                                )
+                )
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Component not found: " + productId
+                        )
+                );
+    }
+
+
+    private final List<SavedBuild> savedBuilds =
+            new ArrayList<>();
+
+    private final ListView<SavedBuild> savedBuildsList =
+            new ListView<>();
 
     private final List<CPU> availableCPUs = new ArrayList<>();
     private final List<GPU> availableGPUs = new ArrayList<>();
@@ -245,6 +551,8 @@ public class MainApp extends Application {
 
         reportButton.setOnAction(event -> generateReport());
 
+
+
         Button createBuildButton = new Button("Create Build");
 
         createBuildButton.setMaxWidth(Double.MAX_VALUE);
@@ -258,6 +566,50 @@ public class MainApp extends Application {
         );
 
         createBuildButton.setOnAction(event -> createBuild());
+
+        Button saveBuildButton = new Button("Save Build");
+
+        saveBuildButton.setMaxWidth(Double.MAX_VALUE);
+
+        saveBuildButton.setStyle(
+                "-fx-background-color: #0f766e;"
+                        + "-fx-text-fill: white;"
+                        + "-fx-font-size: 14px;"
+                        + "-fx-font-weight: bold;"
+                        + "-fx-padding: 12px;"
+        );
+
+        saveBuildButton.setOnAction(event -> saveBuild());
+
+        savedBuildsList.setPrefHeight(150);
+
+        savedBuildsList.setPlaceholder(
+                new Label("No saved builds yet.")
+        );
+
+        Label savedBuildsTitle =
+                new Label("My Saved PC Builds");
+
+        savedBuildsTitle.setStyle(
+                "-fx-font-size: 16px;"
+                        + "-fx-font-weight: bold;"
+        );
+
+        Button loadBuildButton = new Button("Load Build");
+
+        loadBuildButton.setMaxWidth(Double.MAX_VALUE);
+
+        loadBuildButton.setStyle(
+                "-fx-background-color: #2563eb;"
+                        + "-fx-text-fill: white;"
+                        + "-fx-font-size: 14px;"
+                        + "-fx-font-weight: bold;"
+                        + "-fx-padding: 12px;"
+        );
+
+        loadBuildButton.setOnAction(
+                event -> loadSelectedBuild()
+        );
 
         root.getChildren().addAll(
                 title,
@@ -274,8 +626,12 @@ public class MainApp extends Application {
                 warrantyCheckBox,
                 priceRow,
                 createBuildButton,
+                saveBuildButton,
                 validateButton,
                 reportButton,
+                savedBuildsTitle,
+                savedBuildsList,
+                loadBuildButton,
                 new Label("Validation Result / Report:"),
                 resultArea
         );
@@ -289,6 +645,9 @@ public class MainApp extends Application {
 
         stage.setTitle("Build Your Setup - PC Configurator");
         stage.setScene(scene);
+
+        loadSavedBuilds();
+
         stage.show();
     }
 

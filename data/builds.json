@@ -1,13 +1,31 @@
-{
-  "builds": [
-    {
-      "id": "build-001",
-      "name": "Gaming PC 2026",
-      "cpuId": "CPU-001",
-      "gpuId": "GPU-001",
-      "ramId": "RAM-001",
-      "rgb": true,
-      "warranty": false
-    }
-  ]
-}
+[ {
+  "id" : "449a4403-00e0-4050-8d9c-eef095482fb3",
+  "name" : "Gaming Pc 26",
+  "cpuId" : "CPU-001",
+  "gpuId" : "GPU-001",
+  "ramId" : "RAM-001",
+  "rgb" : true,
+  "warranty" : false
+}, {
+  "id" : "fecbffe4-aa45-4ab6-915b-44ce28552158",
+  "name" : "Performance PC",
+  "cpuId" : "CPU-002",
+  "gpuId" : "GPU-002",
+  "ramId" : "RAM-002",
+  "rgb" : true,
+  "warranty" : true
+}, {
+  "id" : "aa0b5241-ce82-4446-bf20-266bfb63340b",
+  "name" : "My Gaming PC",
+  "cpuId" : "CPU-002",
+  "gpuId" : "GPU-002",
+  "ramId" : "RAM-002",
+  "rgb" : false,
+  "warranty" : false
+},
+  {
+    "cpuId": "CPU-001",
+    "gpuId": "GPU-001",
+    "ramId": "RAM-001"
+  }
+]
