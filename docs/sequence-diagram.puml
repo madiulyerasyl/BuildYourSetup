@@ -1,0 +1,71 @@
+@startuml
+title Build Your Setup - Main User Journey
+
+autonumber
+
+actor User
+
+participant "MainApp\n(JavaFX GUI)" as GUI
+participant "PCBuildManager\n(Observer)" as Manager
+participant "PCBuild\n(Model)" as Build
+participant "PCValidationFacade\n(Facade)" as Facade
+participant "ReportVisitor\n(Visitor)" as Visitor
+participant "BuildStorage\n(Persistence)" as Storage
+
+== Configure PC ==
+
+User -> GUI : Select CPU, GPU and RAM
+GUI -> Manager : Update selected components
+Manager -> Build : Set CPU, GPU and RAM
+Build --> Manager : Configuration updated
+Manager --> GUI : Notify observers
+GUI --> User : Display updated price
+
+== Create and Validate Build ==
+
+User -> GUI : Click Create Build
+GUI -> Manager : getBuild()
+Manager --> GUI : PCBuild
+
+User -> GUI : Click Validate
+GUI -> Facade : validateBuild(build)
+Facade --> GUI : ValidationResult
+
+alt Valid configuration
+    GUI --> User : Show validation passed
+else Invalid configuration
+    GUI --> User : Show validation errors
+end
+
+== Generate Report ==
+
+User -> GUI : Click Generate Report
+GUI -> Manager : getBuild()
+Manager --> GUI : PCBuild
+
+GUI -> Facade : validateBuild(build)
+Facade --> GUI : ValidationResult
+
+alt Valid configuration
+    create Visitor
+    GUI -> Visitor : new ReportVisitor()
+    GUI -> Build : getCpu(), getGpu(), getRam()
+    Build --> GUI : CPU, GPU, RAM
+    GUI -> Visitor : CPU.accept(visitor)
+    GUI -> Visitor : GPU.accept(visitor)
+    GUI -> Visitor : RAM.accept(visitor)
+    GUI -> Visitor : getReport()
+    Visitor --> GUI : Component report
+    GUI --> User : Display report and final price
+else Invalid configuration
+    GUI --> User : Display error message
+end
+
+== Save Build ==
+
+User -> GUI : Click Save Build
+GUI -> Storage : Save configuration
+Storage --> GUI : Save result
+GUI --> User : Display saved build
+
+@enduml

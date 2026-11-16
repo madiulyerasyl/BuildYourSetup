@@ -25,6 +25,10 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.stage.FileChooser;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 
 import java.util.List;
 
@@ -795,6 +799,14 @@ public class MainApp extends Application {
 
         reportButton.setOnAction(event -> generateReport());
 
+        Button exportReportButton = new Button("Export Report");
+
+        exportReportButton.setMaxWidth(Double.MAX_VALUE);
+
+        exportReportButton.getStyleClass().add("success-button");
+
+        exportReportButton.setOnAction(event -> exportReport());
+
         Button createBuildButton = new Button("Create Build");
 
         createBuildButton.setMaxWidth(Double.MAX_VALUE);
@@ -911,6 +923,7 @@ public class MainApp extends Application {
                 loadBuildButton,
                 updateBuildButton,
                 deleteBuildButton,
+                exportReportButton,
                 new Label("Validation Result / Report:"),
                 resultArea
         );
@@ -1193,4 +1206,61 @@ public class MainApp extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+
+    private void exportReport() {
+
+        // Generate the report using Visitor and Decorator
+        generateReport();
+
+        String report = resultArea.getText();
+
+        // Export only a successfully generated report
+        if (report == null
+                || !report.startsWith("=== PC BUILD REPORT ===")) {
+
+            return;
+        }
+
+        try {
+            FileChooser fileChooser = new FileChooser();
+
+            fileChooser.setTitle("Export PC Build Report");
+
+            fileChooser.setInitialFileName("PC_Build_Report.txt");
+
+            fileChooser.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter(
+                            "Text Files (*.txt)", "*.txt"
+                    )
+            );
+
+            File file = fileChooser.showSaveDialog(
+                    resultArea.getScene().getWindow()
+            );
+
+            // User pressed Cancel
+            if (file == null) {
+                return;
+            }
+
+            Files.writeString(
+                    file.toPath(),
+                    report,
+                    StandardCharsets.UTF_8
+            );
+
+            resultArea.setText(
+                    report
+                            + "\n\nReport exported successfully!"
+                            + "\nFile: " + file.getAbsolutePath()
+            );
+
+        } catch (Exception exception) {
+
+            resultArea.setText(
+                    "Export failed: " + exception.getMessage()
+            );
+        }
+    }
+
 }
