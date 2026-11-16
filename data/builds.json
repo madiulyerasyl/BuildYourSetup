@@ -1,0 +1,13 @@
+{
+  "builds": [
+    {
+      "id": "build-001",
+      "name": "Gaming PC 2026",
+      "cpuId": "CPU-001",
+      "gpuId": "GPU-001",
+      "ramId": "RAM-001",
+      "rgb": true,
+      "warranty": false
+    }
+  ]
+}
